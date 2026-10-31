@@ -1,173 +1,225 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-import joblib
 
-# -------------------------------
-# Page Configuration
-# -------------------------------
+import streamlit as st
+import joblib
+import pandas as pd
+import plotly.express as px
+
+# Page configuration
 st.set_page_config(
-    page_title="Credit Card Fraud Detection",
-    page_icon="💳",
+    page_title="FraudLens AI",
+    page_icon="🔍",
     layout="wide"
 )
 
-# -------------------------------
-# Load Trained Model
-# -------------------------------
+# Load trained model
 @st.cache_resource
 def load_model():
     return joblib.load("fraud_model.pkl")
 
 model = load_model()
 
-# -------------------------------
-# App Title
-# -------------------------------
-st.title("💳 Credit Card Fraud Detection")
-st.markdown(
-    "### AI-powered Fraud Detection System"
-)
-st.write(
-    "Enter transaction details below to predict "
-    "whether a credit card transaction is legitimate or fraudulent."
-)
+# Header
+st.title("🔍 FraudLens AI")
+
+st.markdown("""
+### Intelligent Credit Card Fraud Detection Dashboard
+Upload transaction data and detect suspicious activities using
+Machine Learning.
+""")
 
 st.divider()
 
-# -------------------------------
-# Input Features
-# -------------------------------
-st.subheader("📋 Transaction Details")
+# File upload
+st.subheader("📂 Upload Transaction Data")
 
-with st.form("transaction_form"):
+uploaded_file = st.file_uploader(
+    "Upload your transaction CSV file",
+    type=["csv"]
+)
+
+if uploaded_file is not None:
+
+    df = pd.read_csv(uploaded_file)
+
+    st.success("Dataset uploaded successfully!")
+
+    # Remove target column if present
+    if "Class" in df.columns:
+        df = df.drop("Class", axis=1)
+
+    # Validate features
+    expected_features = model.feature_names_in_
+
+    missing_features = [
+        feature for feature in expected_features
+        if feature not in df.columns
+    ]
+
+    if missing_features:
+        st.error(f"Missing features: {missing_features}")
+        st.stop()
+
+    # Arrange columns in training order
+    X = df[expected_features]
+
+    # Predictions
+    predictions = model.predict(X)
+    probabilities = model.predict_proba(X)
+
+    # Fraud probability (assuming class 1 = fraud)
+    fraud_index = list(model.classes_).index(1)
+    fraud_probability = probabilities[:, fraud_index] * 100
+
+    # Add results
+    df["Prediction"] = predictions
+    df["Status"] = df["Prediction"].map({
+        0: "Normal",
+        1: "Fraud"
+    })
+
+    df["Fraud Probability (%)"] = fraud_probability
+
+    # Risk categorization
+    def risk_level(probability):
+        if probability > 80:
+            return "High"
+        elif probability > 40:
+            return "Medium"
+        else:
+            return "Low"
+
+    df["Risk Level"] = df["Fraud Probability (%)"].apply(risk_level)
+
+    # Metrics
+    total_transactions = len(df)
+    fraud_count = (df["Prediction"] == 1).sum()
+    fraud_percent = (
+        fraud_count / total_transactions * 100
+        if total_transactions > 0 else 0
+    )
+
+    st.divider()
+    st.subheader("📊 Fraud Detection Overview")
 
     col1, col2, col3 = st.columns(3)
 
-    with col1:
-        time = st.number_input(
-            "Transaction Time",
-            value=0.0
-        )
+    col1.metric("Total Transactions", total_transactions)
+    col2.metric("Fraud Detected", fraud_count)
+    col3.metric("Fraud Percentage", f"{fraud_percent:.2f}%")
 
-        v1 = st.number_input("V1", value=0.0)
-        v2 = st.number_input("V2", value=0.0)
-        v3 = st.number_input("V3", value=0.0)
-        v4 = st.number_input("V4", value=0.0)
-        v5 = st.number_input("V5", value=0.0)
-        v6 = st.number_input("V6", value=0.0)
-        v7 = st.number_input("V7", value=0.0)
-        v8 = st.number_input("V8", value=0.0)
-        v9 = st.number_input("V9", value=0.0)
-        v10 = st.number_input("V10", value=0.0)
+    # Risk distribution
+    st.subheader("📈 Risk Distribution")
 
-    with col2:
-        v11 = st.number_input("V11", value=0.0)
-        v12 = st.number_input("V12", value=0.0)
-        v13 = st.number_input("V13", value=0.0)
-        v14 = st.number_input("V14", value=0.0)
-        v15 = st.number_input("V15", value=0.0)
-        v16 = st.number_input("V16", value=0.0)
-        v17 = st.number_input("V17", value=0.0)
-        v18 = st.number_input("V18", value=0.0)
-        v19 = st.number_input("V19", value=0.0)
-        v20 = st.number_input("V20", value=0.0)
-        v21 = st.number_input("V21", value=0.0)
+    risk_counts = df["Risk Level"].value_counts().reset_index()
+    risk_counts.columns = ["Risk Level", "Count"]
 
-    with col3:
-        v22 = st.number_input("V22", value=0.0)
-        v23 = st.number_input("V23", value=0.0)
-        v24 = st.number_input("V24", value=0.0)
-        v25 = st.number_input("V25", value=0.0)
-        v26 = st.number_input("V26", value=0.0)
-        v27 = st.number_input("V27", value=0.0)
-        v28 = st.number_input("V28", value=0.0)
+    color_map = {
+        "Low": "#2ECC71",
+        "Medium": "#F1C40F",
+        "High": "#E74C3C"
+    }
 
-        amount = st.number_input(
-            "Transaction Amount",
-            min_value=0.0,
-            value=100.0
-        )
-
-    submitted = st.form_submit_button(
-        "🔍 Detect Fraud",
-        use_container_width=True
+    fig = px.pie(
+        risk_counts,
+        names="Risk Level",
+        values="Count",
+        hole=0.5,
+        color="Risk Level",
+        color_discrete_map=color_map
     )
 
-# -------------------------------
-# Prediction
-# -------------------------------
-if submitted:
-
-    features = [
-        time,
-        v1, v2, v3, v4, v5, v6, v7,
-        v8, v9, v10, v11, v12, v13, v14,
-        v15, v16, v17, v18, v19, v20,
-        v21, v22, v23, v24, v25, v26,
-        v27, v28, amount
-    ]
-
-    feature_names = [
-        "Time",
-        *[f"V{i}" for i in range(1, 29)],
-        "Amount"
-    ]
-
-    input_data = pd.DataFrame(
-        [features],
-        columns=feature_names
+    fig.update_layout(
+        title="Transaction Risk Breakdown",
+        template="plotly_white"
     )
 
-    prediction = model.predict(input_data)[0]
+    st.plotly_chart(fig, use_container_width=True)
 
+    # Risk metrics
+    low_risk = (df["Risk Level"] == "Low").sum()
+    medium_risk = (df["Risk Level"] == "Medium").sum()
+    high_risk = (df["Risk Level"] == "High").sum()
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric("🟢 Low Risk", low_risk)
+    col2.metric("🟡 Medium Risk", medium_risk)
+    col3.metric("🔴 High Risk", high_risk)
+
+    # Suspicious transactions
     st.divider()
-    st.subheader("📊 Prediction Result")
+    st.subheader("🚨 Suspicious Transactions")
 
-    if prediction == 1:
-        st.error("🚨 FRAUDULENT TRANSACTION DETECTED!")
-        st.warning(
-            "This transaction has been classified "
-            "as potentially fraudulent."
+    suspicious = df[df["Prediction"] == 1].sort_values(
+        by="Fraud Probability (%)",
+        ascending=False
+    )
+
+    if len(suspicious) > 0:
+        st.dataframe(
+            suspicious,
+            use_container_width=True
         )
-
     else:
-        st.success("✅ LEGITIMATE TRANSACTION")
-        st.info(
-            "This transaction has been classified "
-            "as legitimate."
+        st.success("No fraudulent transactions detected!")
+
+    # Download results
+    csv = df.to_csv(index=False).encode("utf-8")
+
+    st.download_button(
+        label="📥 Download Fraud Analysis Report",
+        data=csv,
+        file_name="fraud_analysis.csv",
+        mime="text/csv"
+    )
+
+    # Conclusion
+    st.divider()
+    st.subheader("📝 Analysis Summary")
+
+    if fraud_percent < 1:
+        st.success(
+            "Low fraud activity detected in the uploaded dataset."
+        )
+    elif fraud_percent < 5:
+        st.warning(
+            "Elevated fraud activity detected. "
+            "Further investigation is recommended."
+        )
+    else:
+        st.error(
+            "High fraud activity detected. "
+            "Immediate investigation is recommended."
         )
 
-    # Display prediction probability
-    if hasattr(model, "predict_proba"):
+# Sidebar
+st.sidebar.title("🔍 FraudLens AI")
 
-        probabilities = model.predict_proba(
-            input_data
-        )[0]
+st.sidebar.markdown("""
+### About the Project
 
-        fraud_probability = probabilities[1] * 100
-        legitimate_probability = probabilities[0] * 100
+An AI-powered dashboard for detecting
+fraudulent credit card transactions.
 
-        col1, col2 = st.columns(2)
+**Model Information**
+- Algorithm: Random Forest
+- Features: 30
+- Framework: Streamlit
+- Dataset: Credit Card Transactions
+""")
 
-        col1.metric(
-            "Legitimate Probability",
-            f"{legitimate_probability:.2f}%"
-        )
+st.sidebar.divider()
 
-        col2.metric(
-            "Fraud Probability",
-            f"{fraud_probability:.2f}%"
-        )
-
-        st.progress(float(probabilities[1]))
-
-# -------------------------------
-# Footer
-# -------------------------------
-st.divider()
-
-st.caption(
-    "Credit Card Fraud Detection | "
-    "Machine Learning Project using Random Forest"
+st.sidebar.info(
+    "FraudLens AI helps identify suspicious "
+    "transactions through Machine Learning."
 )
+
+# Footer
+st.markdown("---")
+
+st.markdown(
+    "### 🔍 FraudLens AI | Machine Learning Fraud Detection"
+)
+
+st.caption("Developed by Kartik Arora | TIET")
