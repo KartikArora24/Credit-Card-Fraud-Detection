@@ -202,7 +202,7 @@ fraudulent credit card transactions.
 
 **Model Information**
 - Algorithm: Local Outlier Factor(LOF)
-- Features: 30
+- Features: 29
 - Framework: Streamlit
 - Dataset: Credit Card Transactions
 """)
