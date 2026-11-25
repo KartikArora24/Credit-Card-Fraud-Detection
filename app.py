@@ -5,7 +5,7 @@ import plotly.express as px
 
 # Page configuration
 st.set_page_config(
-    page_title="FraudLens AI",
+    page_title="FraudLens",
     page_icon="🔍",
     layout="wide"
 )
@@ -18,7 +18,7 @@ def load_model():
 model = load_model()
 
 # Header
-st.title("🔍 FraudLens AI")
+st.title("🔍 FraudLens")
 
 st.markdown("""
 ### Intelligent Credit Card Fraud Detection Dashboard
@@ -192,16 +192,16 @@ if uploaded_file is not None:
         )
 
 # Sidebar
-st.sidebar.title("🔍 FraudLens AI")
+st.sidebar.title("🔍 FraudLens")
 
 st.sidebar.markdown("""
 ### About the Project
 
-An AI-powered dashboard for detecting
+A dashboard for detecting
 fraudulent credit card transactions.
 
 **Model Information**
-- Algorithm: Random Forest
+- Algorithm: Local Outlier Factor(LOF)
 - Features: 30
 - Framework: Streamlit
 - Dataset: Credit Card Transactions
@@ -210,7 +210,7 @@ fraudulent credit card transactions.
 st.sidebar.divider()
 
 st.sidebar.info(
-    "FraudLens AI helps identify suspicious "
+    "FraudLens helps identify suspicious "
     "transactions through Machine Learning."
 )
 
@@ -218,7 +218,7 @@ st.sidebar.info(
 st.markdown("---")
 
 st.markdown(
-    "### 🔍 FraudLens AI | Machine Learning Fraud Detection"
+    "### 🔍 FraudLens  | Machine Learning Fraud Detection"
 )
 
-st.caption("Developed by Kartik Arora | TIET")
+st.caption("Developed by Vinay Sharma | TIET")
