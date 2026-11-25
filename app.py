@@ -221,4 +221,4 @@ st.markdown(
     "### 🔍 FraudLens  | Machine Learning Fraud Detection"
 )
 
-st.caption("Developed by Vinay Sharma | TIET")
+st.caption("Developed by Vinay Sharma, Rahul Saini | TIET")
